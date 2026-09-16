@@ -22,7 +22,6 @@
     h2 { margin-top: 0; color: #1d1d1f; }
     label { display: block; margin: 16px 0 8px; font-weight: 600; }
     
-    /* 班級切換頁籤 */
     .class-tabs {
       display: flex;
       gap: 10px;
@@ -44,7 +43,6 @@
       color: white;
     }
 
-    /* 學生按鈕網格 */
     .student-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -103,7 +101,6 @@
       text-align: center;
     }
   </style>
-  <!-- EmailJS SDK -->
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <script type="text/javascript">
     (function(){
@@ -137,23 +134,17 @@
     let selectedStudent = null;
     let base64Image = "";
 
-    // 載入學生資料 (students.json)
     fetch('students.json')
       .then(res => res.json())
       .then(data => {
         rawData = data;
         renderClassTabs();
       })
-      .catch(err => {
-        console.error("無法載入學生名單:", err);
-        alert("無法載入學生名單，請確認 students.json 檔案。");
-      });
+      .catch(err => console.error("無法載入學生名單:", err));
 
-    // 渲染班級分頁
     function renderClassTabs() {
       const tabsContainer = document.getElementById('classTabs');
       tabsContainer.innerHTML = '';
-      
       const classNames = Object.keys(rawData);
       classNames.forEach((className, index) => {
         const btn = document.createElement('button');
@@ -162,13 +153,9 @@
         btn.onclick = () => switchClass(className, btn);
         tabsContainer.appendChild(btn);
       });
-
-      if (classNames.length > 0) {
-        loadStudents(classNames[0]);
-      }
+      if (classNames.length > 0) loadStudents(classNames[0]);
     }
 
-    // 切換班級
     function switchClass(className, btnElement) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btnElement.classList.add('active');
@@ -176,11 +163,9 @@
       loadStudents(className);
     }
 
-    // 載入學生清單
     function loadStudents(className) {
       const grid = document.getElementById('studentGrid');
       grid.innerHTML = '';
-      
       const students = rawData[className] || [];
       students.forEach(student => {
         const btn = document.createElement('button');
@@ -195,46 +180,49 @@
       });
     }
 
-    // 監聽照片上傳並進行等比例「自動壓縮」
+    // 穩健版：照片載入與等比壓縮
     document.getElementById('cameraInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-          const img = new Image();
-          img.onload = function() {
-            const canvas = document.createElement('canvas');
-            const maxPx = 800; // 縮放照片最長邊至 800px
-            let width = img.width;
-            let height = img.height;
+      if (!file) return;
 
-            if (width > height && width > maxPx) {
-              height *= maxPx / width;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.src = evt.target.result;
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxPx = 600; // 安全壓縮極限尺寸
+
+          if (width > height) {
+            if (width > maxPx) {
+              height = Math.round((height * maxPx) / width);
               width = maxPx;
-            } else if (height > maxPx) {
-              width *= maxPx / height;
+            }
+          } else {
+            if (height > maxPx) {
+              width = Math.round((width * maxPx) / height);
               height = maxPx;
             }
+          }
 
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('canvas');
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            // 壓縮品質設為 0.6 (JPEG)
-            base64Image = canvas.toDataURL('image/jpeg', 0.6);
-            
-            const previewImg = document.getElementById('preview');
-            previewImg.src = base64Image;
-            previewImg.style.display = 'block';
-          };
-          img.src = event.target.result;
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // 轉為輕量化 JPEG
+          base64Image = canvas.toDataURL('image/jpeg', 0.5);
+          
+          const previewImg = document.getElementById('preview');
+          previewImg.src = base64Image;
+          previewImg.style.display = 'block';
         };
-        reader.readAsDataURL(file);
-      }
+      };
+      reader.readAsDataURL(file);
     });
 
-    // 發送信件
     function sendEmail() {
       if (!selectedStudent) {
         alert("請點擊選擇學生姓名！");
@@ -266,7 +254,7 @@
         }, function(error) {
           console.error("發送失敗:", error);
           status.style.color = "red";
-          status.innerText = `❌ 發送失敗：${error.text || '請檢查網路連線'}`;
+          status.innerText = `❌ 發送失敗：${error.text || '請重新上傳照片一次'}`;
           sendBtn.disabled = false;
         });
     }
