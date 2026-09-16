@@ -19,41 +19,80 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
       margin-bottom: 20px;
     }
-    h2 {
-      margin-top: 0;
-      color: #1d1d1f;
+    h2 { margin-top: 0; color: #1d1d1f; }
+    label { display: block; margin: 16px 0 8px; font-weight: 600; }
+    
+    /* 班級切換頁籤 */
+    .class-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
     }
-    label {
-      display: block;
-      margin-bottom: 8px;
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      background: #e5e5ea;
+      color: #3a3a3c;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
       font-weight: 600;
+      cursor: pointer;
     }
-    select, input, button {
+    .tab-btn.active {
+      background: #0071e3;
+      color: white;
+    }
+
+    /* 學生按鈕網格 */
+    .student-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .student-btn {
+      padding: 12px;
+      background: #f2f2f7;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .student-btn.selected {
+      background: #e3f2fd;
+      border-color: #0071e3;
+      color: #0071e3;
+      font-weight: bold;
+    }
+
+    input[type="file"], button.send-btn {
       width: 100%;
       padding: 12px;
-      margin-bottom: 16px;
       border-radius: 8px;
       border: 1px solid #ccc;
       box-sizing: border-box;
       font-size: 16px;
     }
-    button {
+    button.send-btn {
       background-color: #0071e3;
       color: white;
       border: none;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      margin-top: 16px;
     }
-    button:disabled {
+    button.send-btn:disabled {
       background-color: #a1a1a6;
       cursor: not-allowed;
     }
     #preview {
       width: 100%;
-      max-height: 300px;
+      max-height: 250px;
       object-fit: contain;
-      margin-bottom: 16px;
+      margin-top: 12px;
       display: none;
       border-radius: 8px;
     }
@@ -76,27 +115,25 @@
   <div class="card">
     <h2>學生個人學習口袋</h2>
     
-    <label for="classSelect">選擇班級：</label>
-    <select id="classSelect">
-      <option value="">-- 請選擇班級 --</option>
-    </select>
+    <label>1. 選擇班級：</label>
+    <div class="class-tabs" id="classTabs"></div>
 
-    <label for="studentSelect">選擇學生姓名：</label>
-    <select id="studentSelect" disabled>
-      <option value="">-- 請先選擇班級 --</option>
-    </select>
+    <label>2. 選擇學生：</label>
+    <div class="student-grid" id="studentGrid">
+      <div style="color: #8e8e93; grid-column: span 2;">請先選擇班級</div>
+    </div>
 
-    <label for="cameraInput">拍攝學習筆記：</label>
+    <label for="cameraInput">3. 拍攝學習筆記：</label>
     <input type="file" id="cameraInput" accept="image/*" capture="environment">
-    
     <img id="preview" alt="照片預覽">
 
-    <button id="sendBtn" onclick="sendEmail()">發送學習筆記信件</button>
+    <button id="sendBtn" class="send-btn" onclick="sendEmail()">發送學習筆記信件</button>
     <div id="status"></div>
   </div>
 
   <script>
     let rawData = {};
+    let selectedStudent = null;
     let base64Image = "";
 
     // 載入學生資料 (students.json)
@@ -104,43 +141,59 @@
       .then(res => res.json())
       .then(data => {
         rawData = data;
-        const classSelect = document.getElementById('classSelect');
-        
-        // 動態生成班級選項 (A班、B班...)
-        Object.keys(data).forEach(className => {
-          const opt = document.createElement('option');
-          opt.value = className;
-          opt.textContent = className;
-          classSelect.appendChild(opt);
-        });
+        renderClassTabs();
       })
       .catch(err => {
         console.error("無法載入學生名單:", err);
         alert("無法載入學生名單，請確認 students.json 檔案。");
       });
 
-    // 當班級改變時，更新學生清單
-    document.getElementById('classSelect').addEventListener('change', function() {
-      const selectedClass = this.value;
-      const studentSelect = document.getElementById('studentSelect');
+    // 渲染班級分頁
+    function renderClassTabs() {
+      const tabsContainer = document.getElementById('classTabs');
+      tabsContainer.innerHTML = '';
       
-      // 清空原本的學生選單
-      studentSelect.innerHTML = '<option value="">-- 請選擇學生 --</option>';
+      const classNames = Object.keys(rawData);
+      classNames.forEach((className, index) => {
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${index === 0 ? 'active' : ''}`;
+        btn.textContent = className;
+        btn.onclick = () => switchClass(className, btn);
+        tabsContainer.appendChild(btn);
+      });
 
-      if (selectedClass && rawData[selectedClass]) {
-        studentSelect.disabled = false;
-        rawData[selectedClass].forEach(student => {
-          const opt = document.createElement('option');
-          opt.value = student.email;
-          opt.dataset.name = student.name; // 儲存學生姓名
-          opt.textContent = `${student.name} (${student.email})`;
-          studentSelect.appendChild(opt);
-        });
-      } else {
-        studentSelect.disabled = true;
-        studentSelect.innerHTML = '<option value="">-- 請先選擇班級 --</option>';
+      // 預設載入第一個班級
+      if (classNames.length > 0) {
+        loadStudents(classNames[0]);
       }
-    });
+    }
+
+    // 切換班級
+    function switchClass(className, btnElement) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btnElement.classList.add('active');
+      selectedStudent = null; // 清除前一次選取的學生
+      loadStudents(className);
+    }
+
+    // 載入學生清單按鈕
+    function loadStudents(className) {
+      const grid = document.getElementById('studentGrid');
+      grid.innerHTML = '';
+      
+      const students = rawData[className] || [];
+      students.forEach(student => {
+        const btn = document.createElement('button');
+        btn.className = 'student-btn';
+        btn.textContent = student.name;
+        btn.onclick = () => {
+          document.querySelectorAll('.student-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectedStudent = student;
+        };
+        grid.appendChild(btn);
+      });
+    }
 
     // 監聽照片上傳並轉換為 Base64
     document.getElementById('cameraInput').addEventListener('change', function(e) {
@@ -159,23 +212,8 @@
 
     // 發送信件
     function sendEmail() {
-      const classSelect = document.getElementById('classSelect');
-      const studentSelect = document.getElementById('studentSelect');
-      
-      if (!classSelect.value) {
-        alert("請選擇班級！");
-        return;
-      }
-      
-      const email = studentSelect.value;
-      const selectedOpt = studentSelect.options[studentSelect.selectedIndex];
-      const name = selectedOpt ? selectedOpt.dataset.name : "";
-
-      const status = document.getElementById('status');
-      const sendBtn = document.getElementById('sendBtn');
-
-      if (!email) {
-        alert("請選擇學生！");
+      if (!selectedStudent) {
+        alert("請點擊選擇學生姓名！");
         return;
       }
       if (!base64Image) {
@@ -183,20 +221,23 @@
         return;
       }
 
+      const status = document.getElementById('status');
+      const sendBtn = document.getElementById('sendBtn');
+
       sendBtn.disabled = true;
       status.style.color = "#0071e3";
       status.innerText = "信件傳送中，請稍候...";
 
       const templateParams = {
-        student_name: name,
-        to_email: email,
+        student_name: selectedStudent.name,
+        to_email: selectedStudent.email,
         image_data: base64Image
       };
 
       emailjs.send('service_tuy4a19', 'template_3v99cd8', templateParams)
         .then(function(response) {
           status.style.color = "green";
-          status.innerText = "✅ 信件發送成功！";
+          status.innerText = `✅ 已成功發送給 ${selectedStudent.name}！`;
           sendBtn.disabled = false;
         }, function(error) {
           console.error("發送失敗:", error);
