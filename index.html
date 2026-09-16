@@ -76,9 +76,14 @@
   <div class="card">
     <h2>學生個人學習口袋</h2>
     
+    <label for="classSelect">選擇班級：</label>
+    <select id="classSelect">
+      <option value="">-- 請選擇班級 --</option>
+    </select>
+
     <label for="studentSelect">選擇學生姓名：</label>
-    <select id="studentSelect">
-      <option value="">-- 請選擇學生 --</option>
+    <select id="studentSelect" disabled>
+      <option value="">-- 請先選擇班級 --</option>
     </select>
 
     <label for="cameraInput">拍攝學習筆記：</label>
@@ -91,23 +96,51 @@
   </div>
 
   <script>
-    let studentsData = [];
+    let rawData = {};
     let base64Image = "";
 
     // 載入學生資料 (students.json)
     fetch('students.json')
       .then(res => res.json())
       .then(data => {
-        studentsData = data;
-        const select = document.getElementById('studentSelect');
-        data.forEach(student => {
+        rawData = data;
+        const classSelect = document.getElementById('classSelect');
+        
+        // 動態生成班級選項 (A班、B班...)
+        Object.keys(data).forEach(className => {
           const opt = document.createElement('option');
-          opt.value = student.email;
-          opt.textContent = `${student.name} (${student.email})`;
-          select.appendChild(opt);
+          opt.value = className;
+          opt.textContent = className;
+          classSelect.appendChild(opt);
         });
       })
-      .catch(err => console.error("無法載入學生名單:", err));
+      .catch(err => {
+        console.error("無法載入學生名單:", err);
+        alert("無法載入學生名單，請確認 students.json 檔案。");
+      });
+
+    // 當班級改變時，更新學生清單
+    document.getElementById('classSelect').addEventListener('change', function() {
+      const selectedClass = this.value;
+      const studentSelect = document.getElementById('studentSelect');
+      
+      // 清空原本的學生選單
+      studentSelect.innerHTML = '<option value="">-- 請選擇學生 --</option>';
+
+      if (selectedClass && rawData[selectedClass]) {
+        studentSelect.disabled = false;
+        rawData[selectedClass].forEach(student => {
+          const opt = document.createElement('option');
+          opt.value = student.email;
+          opt.dataset.name = student.name; // 儲存學生姓名
+          opt.textContent = `${student.name} (${student.email})`;
+          studentSelect.appendChild(opt);
+        });
+      } else {
+        studentSelect.disabled = true;
+        studentSelect.innerHTML = '<option value="">-- 請先選擇班級 --</option>';
+      }
+    });
 
     // 監聽照片上傳並轉換為 Base64
     document.getElementById('cameraInput').addEventListener('change', function(e) {
@@ -126,9 +159,18 @@
 
     // 發送信件
     function sendEmail() {
-      const select = document.getElementById('studentSelect');
-      const email = select.value;
-      const name = select.options[select.selectedIndex].text.split(' ')[0];
+      const classSelect = document.getElementById('classSelect');
+      const studentSelect = document.getElementById('studentSelect');
+      
+      if (!classSelect.value) {
+        alert("請選擇班級！");
+        return;
+      }
+      
+      const email = studentSelect.value;
+      const selectedOpt = studentSelect.options[studentSelect.selectedIndex];
+      const name = selectedOpt ? selectedOpt.dataset.name : "";
+
       const status = document.getElementById('status');
       const sendBtn = document.getElementById('sendBtn');
 
