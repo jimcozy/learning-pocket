@@ -180,7 +180,7 @@
       });
     }
 
-    // 穩健版：照片載入與等比壓縮
+    // 針對 50KB 限制進行「極限壓縮」
     document.getElementById('cameraInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -193,7 +193,9 @@
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxPx = 600; // 安全壓縮極限尺寸
+          
+          // 強制將最大長邊設為 400px (確保字串容量壓在 50KB 內)
+          const maxPx = 400; 
 
           if (width > height) {
             if (width > maxPx) {
@@ -212,8 +214,8 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // 轉為輕量化 JPEG
-          base64Image = canvas.toDataURL('image/jpeg', 0.5);
+          // 品質降至 0.35 確保符合 EmailJS 限制
+          base64Image = canvas.toDataURL('image/jpeg', 0.35);
           
           const previewImg = document.getElementById('preview');
           previewImg.src = base64Image;
