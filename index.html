@@ -3,145 +3,166 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>學習口袋助手</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>學生個人學習口袋</title>
   <style>
-    body { background-color: #f8f9fa; }
-    .video-container { position: relative; width: 100%; max-width: 640px; margin: 0 auto; background-color: #000; border-radius: 8px; overflow: hidden; }
-    video { width: 100%; height: auto; display: block; }
-    .student-card { cursor: pointer; transition: all 0.2s; }
-    .student-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .student-card.selected { border: 2px solid #0d6efd; background-color: #e7f1ff; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f7;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin-top: 0;
+      color: #1d1d1f;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    select, input, button {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    button {
+      background-color: #0071e3;
+      color: white;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:disabled {
+      background-color: #a1a1a6;
+      cursor: not-allowed;
+    }
+    #preview {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      margin-bottom: 16px;
+      display: none;
+      border-radius: 8px;
+    }
+    #status {
+      margin-top: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
   </style>
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script type="text/javascript">
+    (function(){
+      emailjs.init("5lJijNo_UE2cuBNw5");
+    })();
+  </script>
 </head>
 <body>
-  <div class="container py-3">
-    <!-- 頂部標題與控制欄 -->
-    <div class="d-flex justify-content-between align-items-center bg-primary text-white p-3 rounded mb-3">
-      <h1 class="h4 m-0">📷 學習口袋助手</h1>
-      <div class="d-flex align-items-center gap-2">
-        <label for="classSelect" class="form-label text-nowrap m-0 fw-bold">選擇班級：</label>
-        <select id="classSelect" class="form-select form-select-sm" style="width: 100px;">
-          <option value="A班">A班</option>
-          <option value="B班">B班</option>
-          <option value="C班">C班</option>
-        </select>
-        <span id="cameraStatus" class="badge bg-success">鏡頭正常</span>
-      </div>
-    </div>
 
-    <div class="row g-3">
-      <!-- 左側相機預覽區 -->
-      <div class="col-md-6">
-        <div class="video-container shadow-sm mb-3">
-          <video id="webcam" autoplay playsinline muted></video>
-        </div>
-        <div class="d-grid gap-2 d-flex">
-          <button id="switchBtn" class="btn btn="btn-primary flex-fill">🔄 切換鏡頭</button>
-          <button id="captureBtn" class="btn btn-success flex-fill">📷 1. 拍攝學習單</button>
-        </div>
-      </div>
+  <div class="card">
+    <h2>學生個人學習口袋</h2>
+    
+    <label for="studentSelect">選擇學生姓名：</label>
+    <select id="studentSelect">
+      <option value="">-- 請選擇學生 --</option>
+    </select>
 
-      <!-- 右側學生名單選擇區 -->
-      <div class="col-md-6">
-        <h5 class="fw-bold mb-3">2. 點擊學生姓名歸檔寄出</h5>
-        <div id="studentList" class="row g-2 overflow-auto" style="max-height: 480px;">
-          <!-- 學生卡片將動態產生於此 -->
-        </div>
-      </div>
-    </div>
+    <label for="cameraInput">拍攝學習筆記：</label>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    
+    <img id="preview" alt="照片預覽">
+
+    <button id="sendBtn" onclick="sendEmail()">發送學習筆記信件</button>
+    <div id="status"></div>
   </div>
 
   <script>
-    let currentStream = null;
-    let useFacingMode = "user"; // 預設使用前鏡頭
-    let studentData = {};
-    let selectedStudent = null;
+    let studentsData = [];
+    let base64Image = "";
 
-    const webcam = document.getElementById('webcam');
-    const classSelect = document.getElementById('classSelect');
-    const studentList = document.getElementById('studentList');
-    const cameraStatus = document.getElementById('cameraStatus');
-    const switchBtn = document.getElementById('switchBtn');
+    // 載入學生資料 (students.json)
+    fetch('students.json')
+      .then(res => res.json())
+      .then(data => {
+        studentsData = data;
+        const select = document.getElementById('studentSelect');
+        data.forEach(student => {
+          const opt = document.createElement('option');
+          opt.value = student.email;
+          opt.textContent = `${student.name} (${student.email})`;
+          select.appendChild(opt);
+        });
+      })
+      .catch(err => console.error("無法載入學生名單:", err));
 
-    // 初始化相機（兼顧手機與電腦的彈性設定）
-    async function initCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
+    // 監聽照片上傳並轉換為 Base64
+    document.getElementById('cameraInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          base64Image = evt.target.result;
+          const img = document.getElementById('preview');
+          img.src = base64Image;
+          img.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // 發送信件
+    function sendEmail() {
+      const select = document.getElementById('studentSelect');
+      const email = select.value;
+      const name = select.options[select.selectedIndex].text.split(' ')[0];
+      const status = document.getElementById('status');
+      const sendBtn = document.getElementById('sendBtn');
+
+      if (!email) {
+        alert("請選擇學生！");
+        return;
+      }
+      if (!base64Image) {
+        alert("請先拍照或上傳學習筆記！");
+        return;
       }
 
-      // 相容性極佳的視訊設定，避免手機因為硬鎖 exact 導致失敗
-      const constraints = {
-        video: {
-          facingMode: { ideal: useFacingMode },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
+      sendBtn.disabled = true;
+      status.style.color = "#0071e3";
+      status.innerText = "信件傳送中，請稍候...";
+
+      const templateParams = {
+        student_name: name,
+        to_email: email,
+        image_data: base64Image
       };
 
-      try {
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        webcam.srcObject = currentStream;
-        cameraStatus.className = "badge bg-success";
-        cameraStatus.textContent = "鏡頭正常";
-      } catch (err) {
-        console.error("相機存取失敗:", err);
-        cameraStatus.className = "badge bg-danger";
-        cameraStatus.textContent = "鏡頭權限被拒絕";
-      }
-    }
-
-    // 切換前後鏡頭
-    switchBtn.addEventListener('click', () => {
-      useFacingMode = (useFacingMode === "user") ? "environment" : "user";
-      initCamera();
-    });
-
-    // 載入學生資料
-    async function loadStudents() {
-      try {
-        const response = await fetch('students.json');
-        studentData = await response.json();
-        renderStudents();
-      } catch (err) {
-        console.error("讀取學生名單失敗:", err);
-      }
-    }
-
-    // 渲染學生名單
-    function renderStudents() {
-      const selectedClass = classSelect.value;
-      const students = studentData[selectedClass] || [];
-      studentList.innerHTML = '';
-
-      students.forEach(student => {
-        const col = document.createElement('div');
-        col.className = 'col-6';
-        col.innerHTML = `
-          <div class="card student-card p-3 text-center h-100" data-email="${student.email}">
-            <div class="fw-bold fs-5">${student.name}</div>
-            <div class="text-muted small text-break">${student.email}</div>
-          </div>
-        `;
-
-        col.querySelector('.student-card').addEventListener('click', function() {
-          document.querySelectorAll('.student-card').forEach(c => c.classList.remove('selected'));
-          this.classList.add('selected');
-          selectedStudent = student;
+      emailjs.send('service_tuy4a19', 'template_3v99cd8', templateParams)
+        .then(function(response) {
+          status.style.color = "green";
+          status.innerText = "✅ 信件發送成功！";
+          sendBtn.disabled = false;
+        }, function(error) {
+          console.error("發送失敗:", error);
+          status.style.color = "red";
+          status.innerText = "❌ 發送失敗，請再試一次。";
+          sendBtn.disabled = false;
         });
-
-        studentList.appendChild(col);
-      });
     }
-
-    classSelect.addEventListener('change', renderStudents);
-
-    // 啟動應用程式
-    window.addEventListener('load', () => {
-      initCamera();
-        loadStudents();
-    });
   </script>
 </body>
 </html>
