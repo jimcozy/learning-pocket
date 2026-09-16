@@ -1,0 +1,38 @@
+{
+  "A班": [
+    {
+      "id": 14,
+      "name": "林若谷",
+      "email": "s113006_linruoku@btsflip.tp.edu.tw"
+    },
+    {
+      "id": 21,
+      "name": "林庭妤",
+      "email": "s113033_lintingyu@btsflip.tp.edu.tw"
+    }
+  ],
+  "B班": [
+    {
+      "id": 16,
+      "name": "張一心",
+      "email": "s113001_changyihsin@btsflip.tp.edu.tw"
+    },
+    {
+      "id": 24,
+      "name": "施宥均",
+      "email": "s113029_shihyoujyun@btsflip.tp.edu.tw"
+    }
+  ],
+  "C班": [
+    {
+      "id": 1,
+      "name": "涂子宥",
+      "email": "s113022_tuziyou@btsflip.com"
+    },
+    {
+      "id": 11,
+      "name": "萊俐理",
+      "email": "s113035_leathersalicelily@btsflip.tp.edu.tw"
+    }
+  ]
+}
