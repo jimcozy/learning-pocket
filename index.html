@@ -1,178 +1,147 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生學習口袋 - 教室實物攝影機歸檔助手</title>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <style>
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { margin: 0; padding: 15px; background-color: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
-        header { background-color: #0056b3; color: white; padding: 12px 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        header h1 { margin: 0; font-size: 20px; }
-        .class-select { font-size: 16px; padding: 5px 10px; border-radius: 6px; border: none; font-weight: bold; }
-        .container { display: flex; flex: 1; gap: 15px; min-height: 0; }
-        .camera-section { flex: 1.2; background: #ffffff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .video-container { width: 100%; flex: 1; background: #1a1a1a; border-radius: 8px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-        video, canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .controls { margin-top: 12px; width: 100%; display: flex; gap: 10px; }
-        .btn { padding: 12px 20px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
-        .btn-primary { background-color: #007bff; color: white; flex: 1; }
-        .btn-success { background-color: #28a745; color: white; flex: 2; font-size: 18px; }
-        .students-section { flex: 1; background: #ffffff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; }
-        .students-section h2 { margin-top: 0; font-size: 18px; color: #333; border-bottom: 2px solid #e9ecef; padding-bottom: 8px; }
-        .student-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; overflow-y: auto; flex: 1; }
-        .student-btn { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 10px; padding: 15px 10px; font-size: 16px; font-weight: bold; color: #495057; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
-        .student-btn:hover { border-color: #007bff; background-color: #e7f1ff; color: #007bff; }
-        .status-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .status-card { background: white; padding: 30px 50px; border-radius: 16px; text-align: center; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>學習口袋助手</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .video-container { position: relative; width: 100%; max-width: 640px; margin: 0 auto; background-color: #000; border-radius: 8px; overflow: hidden; }
+    video { width: 100%; height: auto; display: block; }
+    .student-card { cursor: pointer; transition: all 0.2s; }
+    .student-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .student-card.selected { border: 2px solid #0d6efd; background-color: #e7f1ff; }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>📷 學習口袋助手</h1>
-        <div>
-            <label for="classSelector">選擇班級：</label>
-            <select id="classSelector" class="class-select" onchange="changeClass()"></select>
-            <span id="cam-status" style="margin-left:15px; font-size:14px; color: #ffc107;">檢測鏡頭...</span>
-        </div>
-    </header>
-    <div class="container">
-        <div class="camera-section">
-            <div class="video-container">
-                <video id="video" autoplay playsinline></video>
-                <canvas id="canvas" style="display:none;"></canvas>
-            </div>
-            <div class="controls">
-                <button class="btn btn-primary" onclick="switchCamera()">🔄 切換鏡頭</button>
-                <button class="btn btn-success" onclick="takeSnapshot()">📷 1. 拍攝學習單</button>
-            </div>
-        </div>
-        <div class="students-section">
-            <h2>2. 點擊學生姓名歸檔寄出</h2>
-            <div class="student-grid" id="studentGrid"></div>
-        </div>
-    </div>
-    <div class="status-overlay" id="statusOverlay">
-        <div class="status-card">
-            <h3 id="statusTitle">🚀 寄送中...</h3>
-            <p id="statusDesc">正在處理照片並發送 Email。</p>
-        </div>
+  <div class="container py-3">
+    <!-- 頂部標題與控制欄 -->
+    <div class="d-flex justify-content-between align-items-center bg-primary text-white p-3 rounded mb-3">
+      <h1 class="h4 m-0">📷 學習口袋助手</h1>
+      <div class="d-flex align-items-center gap-2">
+        <label for="classSelect" class="form-label text-nowrap m-0 fw-bold">選擇班級：</label>
+        <select id="classSelect" class="form-select form-select-sm" style="width: 100px;">
+          <option value="A班">A班</option>
+          <option value="B班">B班</option>
+          <option value="C班">C班</option>
+        </select>
+        <span id="cameraStatus" class="badge bg-success">鏡頭正常</span>
+      </div>
     </div>
 
-    <script>
-        let allStudentsData = {};
-        let currentClass = "";
-        let videoDevices = [];
-        let currentDeviceIndex = 0;
-        let capturedImageData = null;
+    <div class="row g-3">
+      <!-- 左側相機預覽區 -->
+      <div class="col-md-6">
+        <div class="video-container shadow-sm mb-3">
+          <video id="webcam" autoplay playsinline muted></video>
+        </div>
+        <div class="d-grid gap-2 d-flex">
+          <button id="switchBtn" class="btn btn="btn-primary flex-fill">🔄 切換鏡頭</button>
+          <button id="captureBtn" class="btn btn-success flex-fill">📷 1. 拍攝學習單</button>
+        </div>
+      </div>
 
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const camStatus = document.getElementById('cam-status');
+      <!-- 右側學生名單選擇區 -->
+      <div class="col-md-6">
+        <h5 class="fw-bold mb-3">2. 點擊學生姓名歸檔寄出</h5>
+        <div id="studentList" class="row g-2 overflow-auto" style="max-height: 480px;">
+          <!-- 學生卡片將動態產生於此 -->
+        </div>
+      </div>
+    </div>
+  </div>
 
-        // 1. 載入 students.json 資料
-        async function loadStudentsData() {
-            try {
-                const res = await fetch('students.json');
-                allStudentsData = await res.json();
-                
-                const selector = document.getElementById('classSelector');
-                selector.innerHTML = '';
-                Object.keys(allStudentsData).forEach(className => {
-                    const opt = document.createElement('option');
-                    opt.value = className;
-                    opt.innerText = className;
-                    selector.appendChild(opt);
-                });
-                
-                currentClass = Object.keys(allStudentsData)[0];
-                renderStudents();
-            } catch (err) {
-                alert("無法讀取 students.json 檔案，請確認檔案是否存在。");
-            }
-        }
+  <script>
+    let currentStream = null;
+    let useFacingMode = "user"; // 預設使用前鏡頭
+    let studentData = {};
+    let selectedStudent = null;
 
-        function changeClass() {
-            currentClass = document.getElementById('classSelector').value;
-            renderStudents();
-        }
+    const webcam = document.getElementById('webcam');
+    const classSelect = document.getElementById('classSelect');
+    const studentList = document.getElementById('studentList');
+    const cameraStatus = document.getElementById('cameraStatus');
+    const switchBtn = document.getElementById('switchBtn');
 
-        function renderStudents() {
-            const grid = document.getElementById('studentGrid');
-            grid.innerHTML = '';
-            const list = allStudentsData[currentClass] || [];
-            list.forEach(student => {
-                const btn = document.createElement('button');
-                btn.className = 'student-btn';
-                btn.innerHTML = `<span>${student.name}</span><span style="font-size:11px;color:#888;">${student.email}</span>`;
-                btn.onclick = () => sendToStudent(student);
-                grid.appendChild(btn);
-            });
-        }
+    // 初始化相機（兼顧手機與電腦的彈性設定）
+    async function initCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
 
-        // 2. 鏡頭初始化
-        async function initCamera() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                videoDevices = devices.filter(d => d.kind === 'videoinput');
-                if (videoDevices.length === 0) {
-                    camStatus.innerText = "❌ 找不到鏡頭";
-                    return;
-                }
-                let averIdx = videoDevices.findIndex(d => d.label.toLowerCase().includes('aver') || d.label.toLowerCase().includes('camera'));
-                currentDeviceIndex = averIdx !== -1 ? averIdx : 0;
-                await startStream(videoDevices[currentDeviceIndex].deviceId);
-            } catch (err) {
-                camStatus.innerText = "❌ 鏡頭權限被拒絕";
-            }
-        }
+      // 相容性極佳的視訊設定，避免手機因為硬鎖 exact 導致失敗
+      const constraints = {
+        video: {
+          facingMode: { ideal: useFacingMode },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      };
 
-        async function startStream(deviceId) {
-            if (window.stream) window.stream.getTracks().forEach(t => t.stop());
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
-            window.stream = stream;
-            video.srcObject = stream;
-            camStatus.innerText = "✅ 鏡頭正常";
-            camStatus.style.color = "#28a745";
-        }
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        webcam.srcObject = currentStream;
+        cameraStatus.className = "badge bg-success";
+        cameraStatus.textContent = "鏡頭正常";
+      } catch (err) {
+        console.error("相機存取失敗:", err);
+        cameraStatus.className = "badge bg-danger";
+        cameraStatus.textContent = "鏡頭權限被拒絕";
+      }
+    }
 
-        function switchCamera() {
-            if (videoDevices.length > 1) {
-                currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
-                startStream(videoDevices[currentDeviceIndex].deviceId);
-            }
-        }
+    // 切換前後鏡頭
+    switchBtn.addEventListener('click', () => {
+      useFacingMode = (useFacingMode === "user") ? "environment" : "user";
+      initCamera();
+    });
 
-        function takeSnapshot() {
-            const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            capturedImageData = canvas.toDataURL('image/jpeg', 0.85);
-            alert("📷 學習單已拍照成功！請點擊學生姓名發送。");
-        }
+    // 載入學生資料
+    async function loadStudents() {
+      try {
+        const response = await fetch('students.json');
+        studentData = await response.json();
+        renderStudents();
+      } catch (err) {
+        console.error("讀取學生名單失敗:", err);
+      }
+    }
 
-        async function sendToStudent(student) {
-            if (!capturedImageData) {
-                alert("⚠️ 請先點擊 [1. 拍攝學習單]！");
-                return;
-            }
-            const overlay = document.getElementById('statusOverlay');
-            overlay.style.display = 'flex';
+    // 渲染學生名單
+    function renderStudents() {
+      const selectedClass = classSelect.value;
+      const students = studentData[selectedClass] || [];
+      studentList.innerHTML = '';
 
-            // 這裡未來可帶入 EmailJS 發送邏輯
-            setTimeout(() => {
-                capturedImageData = null;
-                document.getElementById('statusTitle').innerText = "✅ 寄送完成！";
-                setTimeout(() => { overlay.style.display = 'none'; }, 1500);
-            }, 1000);
-        }
+      students.forEach(student => {
+        const col = document.createElement('div');
+        col.className = 'col-6';
+        col.innerHTML = `
+          <div class="card student-card p-3 text-center h-100" data-email="${student.email}">
+            <div class="fw-bold fs-5">${student.name}</div>
+            <div class="text-muted small text-break">${student.email}</div>
+          </div>
+        `;
 
-        window.onload = () => {
-            loadStudentsData();
-            initCamera();
-        };
-    </script>
+        col.querySelector('.student-card').addEventListener('click', function() {
+          document.querySelectorAll('.student-card').forEach(c => c.classList.remove('selected'));
+          this.classList.add('selected');
+          selectedStudent = student;
+        });
+
+        studentList.appendChild(col);
+      });
+    }
+
+    classSelect.addEventListener('change', renderStudents);
+
+    // 啟動應用程式
+    window.addEventListener('load', () => {
+      initCamera();
+        loadStudents();
+    });
+  </script>
 </body>
 </html>
