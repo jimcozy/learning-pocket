@@ -60,11 +60,12 @@
       cursor: pointer;
       text-align: center;
       transition: all 0.2s;
+      color: #0071e3;
     }
     .student-btn.selected {
-      background: #e3f2fd;
+      background: #0071e3;
       border-color: #0071e3;
-      color: #0071e3;
+      color: white;
       font-weight: bold;
     }
 
@@ -120,7 +121,7 @@
 
     <label>2. 選擇學生：</label>
     <div class="student-grid" id="studentGrid">
-      <div style="color: #8e8e93; grid-column: span 2;">請先選擇班級</div>
+      <div style="color: #8e8e93; grid-column: span 2;">載入中...</div>
     </div>
 
     <label for="cameraInput">3. 拍攝學習筆記：</label>
@@ -162,7 +163,6 @@
         tabsContainer.appendChild(btn);
       });
 
-      // 預設載入第一個班級
       if (classNames.length > 0) {
         loadStudents(classNames[0]);
       }
@@ -172,11 +172,11 @@
     function switchClass(className, btnElement) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btnElement.classList.add('active');
-      selectedStudent = null; // 清除前一次選取的學生
+      selectedStudent = null;
       loadStudents(className);
     }
 
-    // 載入學生清單按鈕
+    // 載入學生清單
     function loadStudents(className) {
       const grid = document.getElementById('studentGrid');
       grid.innerHTML = '';
@@ -195,16 +195,40 @@
       });
     }
 
-    // 監聽照片上傳並轉換為 Base64
+    // 監聽照片上傳並進行等比例「自動壓縮」
     document.getElementById('cameraInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = function(evt) {
-          base64Image = evt.target.result;
-          const img = document.getElementById('preview');
-          img.src = base64Image;
-          img.style.display = 'block';
+        reader.onload = function(event) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const maxPx = 800; // 縮放照片最長邊至 800px
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height && width > maxPx) {
+              height *= maxPx / width;
+              width = maxPx;
+            } else if (height > maxPx) {
+              width *= maxPx / height;
+              height = maxPx;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('canvas');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // 壓縮品質設為 0.6 (JPEG)
+            base64Image = canvas.toDataURL('image/jpeg', 0.6);
+            
+            const previewImg = document.getElementById('preview');
+            previewImg.src = base64Image;
+            previewImg.style.display = 'block';
+          };
+          img.src = event.target.result;
         };
         reader.readAsDataURL(file);
       }
@@ -242,7 +266,7 @@
         }, function(error) {
           console.error("發送失敗:", error);
           status.style.color = "red";
-          status.innerText = "❌ 發送失敗，請再試一次。";
+          status.innerText = `❌ 發送失敗：${error.text || '請檢查網路連線'}`;
           sendBtn.disabled = false;
         });
     }
