@@ -15,6 +15,7 @@
   "B班": [
     { "id": 113018, "name": "李宛頤", "email": "s113018_leewanyi@btsflip.tp.edu.tw" },
     { "id": 113002, "name": "盧愛心", "email": "s113002_luaixin@btsflip.tp.edu.tw" },
+     { "id": 113022, "name": "涂子宥", "email": "s113022_tuziyou@btsflip.com" },
     { "id": 113038, "name": "林祐廷", "email": "s113038_linyouting@btsflip.tp.edu.tw" },
     { "id": 113039, "name": "楊翎又", "email": "s113039_yanglingyou@btsflip.tp.edu.tw" },
     { "id": 113030, "name": "余宜融", "email": "s113030_yuyirong@btsflip.tp.edu.tw" },
@@ -25,7 +26,6 @@
     { "id": 113036, "name": "邱立昀", "email": "s113036_ciouliyun@btsflip.tp.edu.tw" }
   ],
   "C班": [
-    { "id": 113022, "name": "涂子宥", "email": "s113022_tuziyou@btsflip.com" },
     { "id": 113035, "name": "萊俐理", "email": "s113035_leathersalicelily@btsflip.tp.edu.tw" },
     { "id": 113013, "name": "杜品儀", "email": "s113013_tupinyi@btsflip.tp.edu.tw" },
     { "id": 113021, "name": "洪若馨", "email": "s113021_hungruoshin@btsflip.com" },
